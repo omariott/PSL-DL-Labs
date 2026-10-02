@@ -42,7 +42,7 @@ def clip(x, lo, hi):
     # TODO: implement this function.
     # Hint: look up np.clip, or implement it yourself with
     # np.minimum / np.maximum.
-    raise NotImplementedError("clip() is not implemented yet")
+    return np.clip(x, lo, hi) 
 
 
 def mean_squared_error(pred, target):
@@ -68,4 +68,4 @@ def mean_squared_error(pred, target):
     # TODO: implement this function.
     # Hint: this is the average of the squared differences between
     # pred and target. No loops needed.
-    raise NotImplementedError("mean_squared_error() is not implemented yet")
+    return np.mean((pred - target) ** 2)
