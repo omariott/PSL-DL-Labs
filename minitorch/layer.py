@@ -36,8 +36,8 @@ class Perceptron:
         int
             +1 or -1.
         """
-        # TODO: implement this method.
-        raise NotImplementedError("predict() is not implemented yet")
+        # TODO: implement this method, following the decision rule from the notebook.
+        return 1 if np.dot(x, self.weight) + self.bias >= 0 else -1
 
     def learn(self, x, y):
         """Update the perceptron from one training example, if needed.
@@ -55,19 +55,31 @@ class Perceptron:
             True if the parameters were updated (the prediction was wrong),
             False if the prediction was already correct.
         """
-        # TODO: implement this method.
-        raise NotImplementedError("learn() is not implemented yet")
+        # TODO: implement this method, following the update rule from the notebook.
+        pred = self.predict(x)
+        if pred * y < 0:
+            self.weight += y * x
+            self.bias += y
+            return True
+        return False
 
 
 class RandomProjection:
     """A fixed random projection followed by a threshold at 0.
 
     In the style of the association units in Rosenblatt's original Mark I
-    Perceptron: a random projection followed by a threshold.
+    Perceptron: a random projection followed by a threshold. self.weight is
+    generated once, when the layer is created, and is never updated
+    afterward.
     """
 
     def __init__(self, num_inputs, num_outputs):
         """Create the layer's fixed random weight.
+
+        The weight is stored as self.weight, with shape
+        (num_inputs, num_outputs), filled with random values following a
+        standard normal distribution. It is generated once here and is
+        never modified afterward.
 
         Parameters
         ----------
@@ -78,7 +90,7 @@ class RandomProjection:
         """
         # TODO: implement this method.
         # Hint: NumPy has a function that produces normally distributed samples.
-        raise NotImplementedError("__init__() is not implemented yet")
+        self.weight = np.random.randn(num_inputs, num_outputs)
 
     def transform(self, x):
         """Apply the fixed random projection and threshold to a batch of inputs.
@@ -95,4 +107,5 @@ class RandomProjection:
             Every value is either 0.0 or 1.0.
         """
         # TODO: implement this method.
-        raise NotImplementedError("transform() is not implemented yet")
+        return (np.dot(x, self.weight) >= 0).astype('float')
+
