@@ -2,6 +2,124 @@ import numpy as np
 
 from minitorch.layer import Perceptron, RandomProjection
 
+from minitorch.layer import Linear, Sigmoid, Sequential
+from minitorch.loss import MSELoss
+from minitorch.utils import check_module, check_model
+ 
+ 
+# --- Sigmoid ---------------------------------------------------------------
+ 
+def test_sigmoid_forward():
+    x = np.random.default_rng(0).normal(size=(5, 3))
+    out = Sigmoid()(x)
+    assert out.shape == x.shape
+    assert np.allclose(out, 1 / (1 + np.exp(-x)))
+ 
+ 
+def test_sigmoid_has_no_parameters():
+    assert Sigmoid().parameters() == []
+ 
+ 
+def test_sigmoid_backward_shape():
+    x = np.random.default_rng(0).normal(size=(5, 3))
+    sigmoid = Sigmoid()
+    sigmoid(x)
+    assert sigmoid.backward(np.ones((5, 3))).shape == x.shape
+ 
+ 
+def test_sigmoid_gradient():
+    x = np.random.default_rng(0).normal(size=(5, 3))
+    check_module(Sigmoid(), x)
+ 
+ 
+# --- Linear ----------------------------------------------------------------
+ 
+def test_linear_parameter_shapes():
+    layer = Linear(3, 2)
+    assert layer.weight.data.shape == (2, 3)
+    assert layer.bias.data.shape == (2,)
+    assert layer.parameters() == [layer.weight, layer.bias]
+    assert layer.weight.grad.shape == (2, 3)
+    assert layer.bias.grad.shape == (2,)
+ 
+ 
+def test_linear_forward_value():
+    rng = np.random.default_rng(0)
+    layer = Linear(3, 2)
+    layer.weight.data[...] = rng.normal(size=(2, 3))
+    layer.bias.data[...] = rng.normal(size=2)
+    x = rng.normal(size=(5, 3))
+    out = layer(x)
+    assert out.shape == (5, 2)
+    assert np.allclose(out, x @ layer.weight.data.T + layer.bias.data)
+ 
+ 
+def test_linear_backward_shape():
+    rng = np.random.default_rng(0)
+    layer = Linear(3, 2)
+    x = rng.normal(size=(5, 3))
+    layer(x)
+    assert layer.backward(rng.normal(size=(5, 2))).shape == x.shape
+ 
+ 
+def test_linear_gradient():
+    rng = np.random.default_rng(0)
+    layer = Linear(3, 2)
+    layer.weight.data[...] = rng.normal(size=(2, 3))
+    layer.bias.data[...] = rng.normal(size=2)
+    check_module(layer, rng.normal(size=(5, 3)))
+ 
+ 
+def test_linear_gradients_accumulate():
+    rng = np.random.default_rng(0)
+    layer = Linear(3, 2)
+    x = rng.normal(size=(5, 3))
+    g = rng.normal(size=(5, 2))
+    layer.zero_grad()
+    layer(x)
+    layer.backward(g)
+    first_weight = layer.weight.grad.copy()
+    first_bias = layer.bias.grad.copy()
+    layer(x)
+    layer.backward(g)
+    assert np.allclose(layer.weight.grad, 2 * first_weight)
+    assert np.allclose(layer.bias.grad, 2 * first_bias)
+ 
+ 
+def test_linear_zero_grad():
+    rng = np.random.default_rng(0)
+    layer = Linear(3, 2)
+    layer(rng.normal(size=(5, 3)))
+    layer.backward(rng.normal(size=(5, 2)))
+    layer.zero_grad()
+    assert np.all(layer.weight.grad == 0)
+    assert np.all(layer.bias.grad == 0)
+ 
+ 
+# --- Sequential ------------------------------------------------------------
+ 
+def test_sequential_parameters():
+    model = Sequential(Linear(2, 4), Sigmoid(), Linear(4, 1), Sigmoid())
+    assert len(model.parameters()) == 4
+ 
+ 
+def test_sequential_backward_shape():
+    rng = np.random.default_rng(0)
+    model = Sequential(Linear(2, 4), Sigmoid(), Linear(4, 1), Sigmoid())
+    x = rng.normal(size=(6, 2))
+    out = model(x)
+    assert out.shape == (6, 1)
+    assert model.backward(np.ones_like(out)).shape == x.shape
+ 
+ 
+def test_sequential_gradient():
+    rng = np.random.default_rng(0)
+    np.random.seed(0)
+    model = Sequential(Linear(2, 4), Sigmoid(), Linear(4, 1), Sigmoid())
+    x = rng.normal(size=(6, 2))
+    y = rng.integers(0, 2, size=(6, 1)).astype(float)
+    check_model(model, MSELoss(), x, y)
+ 
 
 # --- Perceptron ---
 
