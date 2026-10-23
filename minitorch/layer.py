@@ -16,7 +16,7 @@ class Linear(Module):
     """
 
     def __init__(self, in_features, out_features):
-        # Drawn from a standard normal distribution (Lab 6 covers initialization schemes).
+        # Drawn from a standard normal distribution (a later lab covers initialization schemes).
         self.weight = Parameter(np.random.randn(out_features, in_features))
         self.bias = Parameter(np.zeros(out_features))
         self.cache = None
