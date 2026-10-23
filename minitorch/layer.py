@@ -30,7 +30,8 @@ class Linear(Module):
         Returns an array of shape (N, out_features). Saves what backward needs.
         Read weight.data and bias.data on every call, since the optimizer changes them.
         """
-        ...
+        self.cache = x
+        return x @ self.weight.T + self.bias
 
     def backward(self, grad):
         """Backward pass.
@@ -40,7 +41,10 @@ class Linear(Module):
         (accumulate with +=, never overwrite) and returns the gradient with respect to
         the input, of shape (N, in_features).
         """
-        ...
+        x = self.cache
+        self.weight.grad += grad.T @ x
+        self.bias.grad += grad.sum(0)
+        return grad @ self.weight
 
 
 class Sigmoid(Module):
@@ -51,14 +55,16 @@ class Sigmoid(Module):
 
     def forward(self, x):
         """Sigmoid of x, with the shape of x. Saves what backward needs."""
-        ...
+        res =  (1 + np.exp(-x)) ** -1
+        self.cache = res * (1 - res)
+        return res
 
     def backward(self, grad):
         """grad is the gradient of the loss with respect to the output.
 
         Returns the gradient with respect to the input.
         """
-        ...
+        return grad * self.cache
 
 
 class Sequential(Module):
@@ -77,7 +83,10 @@ class Sequential(Module):
 
         Returns the gradient with respect to its input.
         """
-        ...
+        
+        for layer in self.layers[::-1]:
+            grad = layer.backward(grad)
+        return grad
 
     def parameters(self):
         return [p for layer in self.layers for p in layer.parameters()]
@@ -186,4 +195,3 @@ class RandomProjection:
         """
         # TODO: implement this method.
         return (np.dot(x, self.weight) >= 0).astype('float')
-

@@ -20,11 +20,12 @@ class MSELoss(Module):
 
         Saves what backward needs in self.cache.
         """
-        ...
+        self.cache = 2 * (pred - target) / pred.size
+        return np.mean((pred - target) ** 2)
 
     def backward(self):
         """Gradient of the loss with respect to pred, with the shape of pred."""
-        ...
+        return self.cache
 
 
 class BCELoss(Module):

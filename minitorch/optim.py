@@ -22,6 +22,10 @@ class SGD:
 
     def step(self):
         """Update every parameter in place."""
+
+        # TODO: update the following code (used in lab05) with momemtum taking into account
+        # for p in self.parameters:
+        #     p.data -= self.lr * p.grad
         ...
 
     def zero_grad(self):
