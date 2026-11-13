@@ -9,7 +9,7 @@ def normal_(param, mean=0.0, std=1.0):
     In place: param.data must be the same array object before and after the call.
     Returns nothing.
     """
-    ...
+    param.data[...] = np.random.randn(*param.shape) * std + mean
 
 
 def kaiming_normal_(param):
