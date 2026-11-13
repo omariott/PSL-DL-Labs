@@ -14,7 +14,7 @@ class SGD:
     With momentum = 0 this is plain gradient descent, as in Lab 5.
     """
 
-    def __init__(self, parameters, lr, momentum=0.0):
+    def __init__(self, parameters, lr, momentum=0.0, weight_decay=0.0):
         self.parameters = list(parameters)
         self.lr = lr
         self.momentum = momentum
