@@ -1,6 +1,7 @@
 import numpy as np
 
 from minitorch.layer import Linear
+from minitorch.module import Parameter
 from minitorch.optim import SGD, RMSProp, Adam
 
 
@@ -188,3 +189,75 @@ def test_adam_zero_grad():
     optimizer.zero_grad()
     assert np.all(layer.weight.grad == 0)
     assert np.all(layer.bias.grad == 0)
+
+
+# --- SGD with weight decay (Lab 7) -------------------------------------------
+
+def _param(values, grad):
+    p = Parameter(np.array(values, dtype=float))
+    p.grad[...] = grad
+    return p
+
+
+def test_sgd_weight_decay_single_step():
+    theta, g = np.array([1.0, -2.0, 3.0]), np.array([0.5, 0.5, -1.0])
+    p = _param(theta, g)
+    SGD([p], lr=0.1, weight_decay=0.01).step()
+    assert np.allclose(p.data, theta - 0.1 * (g + 0.01 * theta))
+
+
+def test_sgd_weight_decay_default_is_zero():
+    theta, g = np.array([1.0, -2.0]), np.array([0.5, 0.25])
+    p = _param(theta, g)
+    SGD([p], lr=0.1).step()
+    assert np.allclose(p.data, theta - 0.1 * g)
+
+
+def test_sgd_weight_decay_zero_gives_the_same_steps_with_momentum():
+    theta0, g1, g2 = np.array([1.0, -2.0]), np.array([0.3, 0.1]), np.array([-0.2, 0.4])
+    lr, m = 0.1, 0.9
+    p = _param(theta0, g1)
+    opt = SGD([p], lr=lr, momentum=m, weight_decay=0.0)
+    opt.step()
+    theta1 = theta0 - lr * g1
+    p.grad[...] = g2
+    opt.step()
+    assert np.allclose(p.data, theta1 - lr * (m * g1 + g2))
+
+
+def test_sgd_weight_decay_with_momentum_two_steps():
+    theta0, g1, g2 = np.array([1.0, -2.0]), np.array([0.3, 0.1]), np.array([-0.2, 0.4])
+    lr, m, wd = 0.1, 0.9, 0.05
+    p = _param(theta0, g1)
+    opt = SGD([p], lr=lr, momentum=m, weight_decay=wd)
+    opt.step()
+    v1 = g1 + wd * theta0                              # the decay enters the gradient, before the momentum update
+    theta1 = theta0 - lr * v1
+    assert np.allclose(p.data, theta1)
+    p.grad[...] = g2
+    opt.step()
+    v2 = m * v1 + g2 + wd * theta1
+    assert np.allclose(p.data, theta1 - lr * v2)
+
+
+def test_sgd_weight_decay_does_not_modify_the_gradient():
+    g = np.array([0.5, 0.5, -1.0])
+    p = _param([1.0, -2.0, 3.0], g)
+    SGD([p], lr=0.1, weight_decay=0.1).step()
+    assert np.array_equal(p.grad, g)
+
+
+def test_sgd_weight_decay_applies_to_every_parameter():
+    weight, bias = _param(np.ones((2, 3)), np.zeros((2, 3))), _param(np.ones(2), np.zeros(2))
+    SGD([weight, bias], lr=0.5, weight_decay=0.2).step()
+    assert np.allclose(weight.data, 0.9) and np.allclose(bias.data, 0.9)       # 1 - 0.5 * 0.2
+
+
+def test_sgd_weight_decay_shrinks_weights_when_the_gradient_is_zero():
+    theta = np.array([2.0, -1.0, 0.5])
+    p = _param(theta, np.zeros(3))
+    opt = SGD([p], lr=0.1, weight_decay=0.5)
+    for _ in range(10):
+        opt.step()
+    assert np.allclose(p.data, theta * (1 - 0.1 * 0.5) ** 10)
+

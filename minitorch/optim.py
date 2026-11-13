@@ -22,11 +22,10 @@ class SGD:
 
     def step(self):
         """Update every parameter in place."""
-
-        # TODO: update the following code (used in lab05) with momemtum taking into account
-        # for p in self.parameters:
-        #     p.data -= self.lr * p.grad
-        ...
+        for p, v in zip(self.parameters, self.velocities):
+            v *= self.momentum
+            v += p.grad
+            p.data -= self.lr * v
 
     def zero_grad(self):
         """Set the gradient of every parameter to zero (provided)."""
@@ -38,7 +37,10 @@ class RMSProp:
     """RMSProp: every entry of every parameter gets its own step size.
 
     Each parameter keeps a running average s of its squared gradient, an array of its shape
-    that starts at zero. 
+    that starts at zero. At every step,
+
+        s = alpha * s + (1 - alpha) * grad ** 2
+        parameter -= lr * grad / (sqrt(s) + eps)
 
     All operations are elementwise.
     """
@@ -52,7 +54,10 @@ class RMSProp:
 
     def step(self):
         """Update every parameter in place."""
-        ...
+        for p, s in zip(self.parameters, self.squares):
+            s *= self.alpha
+            s += (1 - self.alpha) * p.grad ** 2
+            p.data -= self.lr * p.grad / (np.sqrt(s) + self.eps)
 
     def zero_grad(self):
         """Set the gradient of every parameter to zero (provided)."""
@@ -65,12 +70,18 @@ class Adam:
 
     Each parameter keeps a running average m of its gradient and a running average v of its
     squared gradient, two arrays of its shape that start at zero. self.t counts the steps
-    taken, starting at 0. 
+    taken, starting at 0. At every step, first t is increased by 1, then
+
+        m = beta1 * m + (1 - beta1) * grad
+        v = beta2 * v + (1 - beta2) * grad ** 2
+        m_hat = m / (1 - beta1 ** t)
+        v_hat = v / (1 - beta2 ** t)
+        parameter -= lr * m_hat / (sqrt(v_hat) + eps)
 
     All operations are elementwise. betas is the pair (beta1, beta2).
     """
 
-    def __init__(self, parameters, lr=0.001, betas=(0.9, 0.99), eps=1e-8):
+    def __init__(self, parameters, lr=0.001, betas=(0.9, 0.999), eps=1e-8):
         self.parameters = list(parameters)
         self.lr = lr
         self.beta1, self.beta2 = betas
@@ -81,7 +92,15 @@ class Adam:
 
     def step(self):
         """Update every parameter in place."""
-        ...
+        self.t += 1
+        for p, m, v in zip(self.parameters, self.means, self.squares):
+            m *= self.beta1
+            m += (1 - self.beta1) * p.grad
+            v *= self.beta2
+            v += (1 - self.beta2) * p.grad ** 2
+            m_hat = m / (1 - self.beta1 ** self.t)
+            v_hat = v / (1 - self.beta2 ** self.t)
+            p.data -= self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
     def zero_grad(self):
         """Set the gradient of every parameter to zero (provided)."""

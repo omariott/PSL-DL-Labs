@@ -4,7 +4,7 @@ minitorch.layer
 
 import numpy as np
 
-from .module import Module, Parameter
+from .module import Buffer, Module, Parameter
 
 
 class Linear(Module):
@@ -73,6 +73,9 @@ class Sequential(Module):
     def __init__(self, *layers):
         self.layers = list(layers)
 
+    def children(self):
+       return self.layers
+
     def forward(self, x):
         for layer in self.layers:
             x = layer(x)
@@ -90,6 +93,119 @@ class Sequential(Module):
 
     def parameters(self):
         return [p for layer in self.layers for p in layer.parameters()]
+
+
+
+class ReLU(Module):
+    """Elementwise ReLU (provided)."""
+
+    def __init__(self):
+        self.cache = None
+
+    def forward(self, x):
+        self.cache = x > 0
+        return x * self.cache
+
+    def backward(self, grad):
+        return grad * self.cache
+
+
+class Tanh(Module):
+    """Elementwise hyperbolic tangent (provided)."""
+
+    def __init__(self):
+        self.cache = None
+
+    def forward(self, x):
+        out = np.tanh(x)
+        self.cache = 1 - out ** 2
+        return out
+
+    def backward(self, grad):
+        return grad * self.cache
+
+
+class BatchNorm1d(Module):
+    """Batch normalization of a batch x of shape (N, num_features).
+
+    The layer has two modes, set by model.train() and model.eval() and read in self.training:
+    - training: every feature is normalized with the mean and variance of the batch, then scaled and shifted
+      by the Parameters weight (gamma) and bias (beta). The Buffers running_mean and running_var are updated:
+      running = (1 - momentum) * running + momentum * batch_statistic.
+    - eval: every feature is normalized with running_mean and running_var, which are not updated.
+    Buffers are arrays of the state of the layer that are not learned; update them in place through .data.
+    """
+
+    def __init__(self, num_features, eps=1e-5, momentum=0.1):
+        self.eps = eps
+        self.momentum = momentum
+        self.weight = Parameter(np.ones(num_features))      # gamma
+        self.bias = Parameter(np.zeros(num_features))       # beta
+        self.running_mean = Buffer(np.zeros(num_features))
+        self.running_var = Buffer(np.ones(num_features))
+        self.cache = None
+
+    def parameters(self):
+        return [self.weight, self.bias]
+
+    def buffers(self):
+        return [self.running_mean, self.running_var]
+
+    def forward(self, x):
+        """Returns an array of shape (N, num_features).
+
+        The layer behaves differently in the two modes, and self.training tells which one applies:
+        - training mode: normalize with the mean and variance of the batch, and update the running
+          statistics (in place, through running_mean.data and running_var.data);
+        - eval mode: normalize with the running statistics, and leave them unchanged.
+
+        Saves the pair (x_hat, inv_std) in self.cache, where x_hat is the normalized input and
+        inv_std = 1 / sqrt(var + eps), for the provided backward.
+        """
+        if self.training:
+            mean, var = ... # get batch stats, and update running ones them with momentum
+        else:
+            mean, var = ... # we're doing inference, so simply get the running stats
+        ... # normalize batch
+
+
+
+    def backward(self, grad):
+        """Provided. Training mode only (the statistics depend on the batch)."""
+        x_hat, inv_std = self.cache
+        n = len(grad)
+        self.weight.grad += (grad * x_hat).sum(axis=0)
+        self.bias.grad += grad.sum(axis=0)
+        return (self.weight.data * inv_std / n) * (
+            n * grad - grad.sum(axis=0) - x_hat * (grad * x_hat).sum(axis=0)
+        )
+
+
+class Residual(Module):
+    """Skip connection around another module with equal input and output shapes:
+    y = x + module(x).
+    """
+
+    def __init__(self, module):
+        self.module = module
+
+    def children(self):
+        return [self.module]
+
+    def parameters(self):
+        """The Parameter objects of the wrapped module."""
+        ...
+
+    def forward(self, x):
+        ...
+
+    def backward(self, grad):
+        """grad is the gradient of the loss with respect to the output.
+
+        Returns the gradient with respect to the input.
+        """
+        ...
+
 
 
 class Perceptron:
@@ -195,3 +311,4 @@ class RandomProjection:
         """
         # TODO: implement this method.
         return (np.dot(x, self.weight) >= 0).astype('float')
+
